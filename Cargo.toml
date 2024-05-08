@@ -1,0 +1,41 @@
+[package]
+name = "playerapi"
+version = "1.0.0"
+edition = "2021"
+authors = ["autergame"]
+
+[dependencies]
+url = "2.5.0"
+hex = "0.4.3"
+rand = "0.8.5"
+tokio = "1.37.0"
+reqwest = "0.12.4"
+indicium = "0.6.1"
+itertools = "0.12.1"
+urlencoding = "2.1.3"
+ordered-float = "4.2.0"
+
+actix-web = "4.5.1"
+actix-cors = "0.7.0"
+actix-web-httpauth = "0.8.1"
+
+#utoipa = { version = "4.1.0", features = ["actix_extras"] }
+#utoipa-swagger-ui = { version = "5.0.0", features = ["actix-web"] }
+
+sea-orm = { version = "0.12.15", features = [
+	"sqlx-sqlite",
+	"runtime-tokio-rustls",
+] }
+sea-orm-migration = "0.12.15"
+
+serde = { version = "1.0.199", features = ["derive"] }
+serde_json = { version = "1.0.116", features = ["arbitrary_precision"] }
+serde_urlencoded = "0.7.1"
+
+[profile.release]
+opt-level = 3
+strip = true
+debug = false
+incremental = false
+overflow-checks = false
+debug-assertions = false

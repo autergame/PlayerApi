@@ -1,0 +1,12 @@
+target.lnk
+target/
+files/
+
+Cargo.lock
+
+PlayerApi.code-workspace
+cross_compile.bat
+cross_compile.sh
+
+.vscode/
+.cargo/
