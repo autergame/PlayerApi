@@ -152,7 +152,7 @@ pub async fn get_movies<'a>(
     get_json(&params, client).await
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Info {
     name: Option<String>,
 
@@ -211,18 +211,18 @@ pub async fn get_series<'a>(
     get_json(&params, client).await
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Season {
     poster_path: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct EpisodeInfo {
     #[serde(alias = "movie_image")]
     image: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Episode {
     #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
     pub id: Option<i64>,
@@ -232,7 +232,7 @@ pub struct Episode {
     pub container_extension: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerieInfo {
     info: Info,
     seasons: Vec<Season>,

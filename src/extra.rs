@@ -58,6 +58,7 @@ where
 
 	if cfg!(debug_assertions) {
     	println!("get_json: {:?}", request);
+		println!();
 	}
 
     let request = request

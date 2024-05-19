@@ -48,8 +48,8 @@ struct Store {
 }
 
 #[actix_web::routes]
-#[get("/store/{avatar}/{kind}/{time}/{id}")]
-#[get("/store/{avatar}/{kind}/{time}/{id}/{episode_id}")]
+#[get("/store/{avatar}/{kind}/{id}/{time}")]
+#[get("/store/{avatar}/{kind}/{id}/{episode_id}/{time}")]
 async fn store(
     credentials: BearerAuth,
     path: ActixWeb::Path<Store>,
@@ -79,15 +79,15 @@ async fn store(
             let id = i64::from_str(&store.id)?;
             let episode_id = store.episode_id.ok_or(ApiError::NotFound)?;
 
-            if let Some(watching) = WatchingEntity::find()
+            for episodes in WatchingEntity::find()
                 .filter(WatchingColumn::AvatarId.eq(store.avatar))
                 .filter(WatchingColumn::Kind.eq(store.kind.clone()))
                 .filter(WatchingColumn::ValueId.eq(id))
                 .filter(WatchingColumn::EpisodeId.ne(episode_id))
-                .one(db.get_ref())
+                .all(db.get_ref())
                 .await?
             {
-                WatchingEntity::delete(Into::<WatchingActiveModel>::into(watching))
+                WatchingEntity::delete(Into::<WatchingActiveModel>::into(episodes))
                     .exec(db.get_ref())
                     .await?;
             }
@@ -96,10 +96,9 @@ async fn store(
 
             let container_extension = serie_info
                 .episodes
-                .iter()
-                .map(|x| x.1.iter().find(|y| y.id == Some(episode_id)))
-                .next()
+                .values()
                 .flatten()
+                .find(|x| x.id == Some(episode_id))
                 .ok_or(ApiError::WrongEpisodeId)?
                 .container_extension
                 .clone();
