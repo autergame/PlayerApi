@@ -28,9 +28,9 @@ impl MigrationTrait for Migration {
                             .to(Session::Table, Session::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
-                    .col(ColumnDef::new(Home::Kind).string())
-                    .col(ColumnDef::new(Home::ValueId).integer())
-                    .col(ColumnDef::new(Home::Name).string())
+                    .col(ColumnDef::new(Home::Kind).string().not_null())
+                    .col(ColumnDef::new(Home::ValueId).integer().not_null())
+                    .col(ColumnDef::new(Home::Name).string().not_null())
                     .col(ColumnDef::new(Home::Icon).string())
                     .to_owned(),
             )

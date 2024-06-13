@@ -8,7 +8,7 @@ use std::cmp::Reverse;
 use crate::{
     api_error::ApiResult,
     entities::{home::Kind, prelude::*},
-    extra::{get_month_ago, Params},
+    extra::{get_days_ago, Params},
     get::{get_movies, get_series, Value},
     login,
 };
@@ -59,11 +59,11 @@ pub async fn make_homes(
     db: ActixWeb::Data<DatabaseConnection>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<()> {
-    let month_ago = get_month_ago()?;
+    let month_ago = get_days_ago(30);
     let logins = LoginEntity::find().all(db.get_ref()).await?;
 
     for login in logins {
-        let _ = make(&login, month_ago, db.clone(), client.clone()).await;
+        make(&login, month_ago, db.clone(), client.clone()).await?;
     }
 
     Ok(())
@@ -75,23 +75,18 @@ pub async fn make(
     db: ActixWeb::Data<DatabaseConnection>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<()> {
-    let mut movies = get_movies(&None, Params::new(login), client.clone()).await?;
-    let mut series = get_series(&None, Params::new(login), client).await?;
+    let mut movies = get_movies(None, Params::new(login), client.clone()).await?;
+    let mut series = get_series(None, Params::new(login), client).await?;
 
     let mut tops = movies
         .clone()
         .into_iter()
         .map(|x| (Kind::TopMovie, x))
         .chain(series.clone().into_iter().map(|x| (Kind::TopSerie, x)))
-        .filter(|(_, y)| y.rating.is_some() && y.added.is_some_and(|z| z > month_ago))
+        .filter(|(_, y)| y.added > month_ago)
         .collect::<Vec<(Kind, Value)>>();
 
-    tops.sort_by_cached_key(|x| {
-        (
-            Reverse(OrderedFloat(x.1.rating.unwrap())),
-            Reverse(x.1.added.unwrap()),
-        )
-    });
+    tops.sort_by_cached_key(|x| (Reverse(OrderedFloat(x.1.rating)), Reverse(x.1.added)));
     tops.truncate(10);
 
     movies.sort_by_cached_key(|x| Reverse(x.added));

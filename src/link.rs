@@ -29,7 +29,7 @@ impl std::fmt::Display for Kind {
 #[actix_web::get("/link/{kind}/{id}/{container_extension}")]
 async fn link(
     credentials: BearerAuth,
-    path: ActixWeb::Path<(Kind, String, String)>,
+    path: ActixWeb::Path<(Kind, i64, String)>,
     db: ActixWeb::Data<DatabaseConnection>,
 ) -> ApiResult<HttpResponse> {
     let (kind, id, container_extension) = path.into_inner();

@@ -17,7 +17,6 @@ pub struct Model {
     #[serde(skip_serializing, skip_deserializing)]
     pub id: i64,
 
-    #[serde(skip_serializing)]
     //#[schema(example = "https://limetv.me", required = true)]
     pub server: String,
     //#[schema(example = "teste123", required = true)]

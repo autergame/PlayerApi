@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     api_error::ApiResult,
-    extra::{get_json, opt_num_from_str_or_num, CustomDeref, IdType, Params},
+    extra::{default_on_null, get_json, num_from_str_or_num, IdType, Params},
     login,
 };
 
@@ -29,7 +29,7 @@ pub enum Kind {
 #[derive(Deserialize)]
 struct Get {
     kind: Kind,
-    category_id: Option<String>,
+    category_id: Option<i64>,
 }
 
 #[actix_web::routes]
@@ -50,9 +50,9 @@ async fn get(
     let params = Params::new(&login);
 
     let result = match get.kind {
-        Kind::Live => get_lives(&get.category_id, params, client).await?,
-        Kind::Movie => get_movies(&get.category_id, params, client).await?,
-        Kind::Serie => get_series(&get.category_id, params, client).await?,
+        Kind::Live => get_lives(get.category_id, params, client).await?,
+        Kind::Movie => get_movies(get.category_id, params, client).await?,
+        Kind::Serie => get_series(get.category_id, params, client).await?,
     };
 
     Ok(HttpResponse::Ok().json(result))
@@ -61,7 +61,7 @@ async fn get(
 #[actix_web::get("/info/{kind}/{id}")]
 async fn info<'a>(
     credentials: BearerAuth,
-    path: ActixWeb::Path<(Kind, String)>,
+    path: ActixWeb::Path<(Kind, i64)>,
     db: ActixWeb::Data<DatabaseConnection>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<HttpResponse> {
@@ -74,9 +74,9 @@ async fn info<'a>(
     let params = Params::new(&login);
 
     let result = match kind {
-        Kind::Live => ResultInfo::Live(get_live_epg(&id, params, client).await?),
-        Kind::Movie => ResultInfo::Movie(Box::new(get_movie_info(&id, params, client).await?)),
-        Kind::Serie => ResultInfo::Serie(Box::new(get_serie_info(&id, params, client).await?)),
+        Kind::Live => ResultInfo::Live(get_live_epg(id, params, client).await?),
+        Kind::Movie => ResultInfo::Movie(Box::new(get_movie_info(id, params, client).await?)),
+        Kind::Serie => ResultInfo::Serie(Box::new(get_serie_info(id, params, client).await?)),
     };
 
     Ok(HttpResponse::Ok().json(result))
@@ -103,26 +103,33 @@ async fn categories<'a>(
 }
 
 pub async fn get_lives<'a>(
-    category_id: &'a Option<String>,
+    category_id: Option<i64>,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<Vec<Value>> {
     params.action = Some("get_live_streams");
-    params.id = category_id.deref_map(IdType::Category);
+    params.id = category_id.map(IdType::Category);
 
     get_json(&params, client).await
 }
 
 #[derive(Serialize, Deserialize)]
 struct Epg {
-    title: Option<String>,
-    description: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    title: String,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    start_timestamp: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    description: String,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    stop_timestamp: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    start_timestamp: i64,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    stop_timestamp: i64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -131,7 +138,7 @@ struct EpgListings {
 }
 
 async fn get_live_epg<'a>(
-    id: &'a str,
+    id: i64,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<Vec<Epg>> {
@@ -142,43 +149,77 @@ async fn get_live_epg<'a>(
 }
 
 pub async fn get_movies<'a>(
-    category_id: &'a Option<String>,
+    category_id: Option<i64>,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<Vec<Value>> {
     params.action = Some("get_vod_streams");
-    params.id = category_id.deref_map(IdType::Category);
+    params.id = category_id.map(IdType::Category);
 
     get_json(&params, client).await
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Info {
-    name: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    name: String,
 
-    plot: Option<String>,
-    cast: Option<String>,
-    genre: Option<String>,
-    duration: Option<String>,
-    director: Option<String>,
-    release_date: Option<String>,
-    youtube_trailer: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    plot: String,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    rating: Option<f64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    cast: String,
 
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    genre: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    duration: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    director: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    youtube_trailer: String,
+
+    #[serde(default)]
+    #[serde(alias = "cover")]
     #[serde(alias = "movie_image")]
-    cover: Option<String>,
+    #[serde(deserialize_with = "default_on_null")]
+    icon: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    rating: f64,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    last_modified: i64,
 }
 
 #[derive(Serialize, Deserialize)]
 struct MovieData {
     #[serde(alias = "stream_id")]
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    id: Option<i64>,
+    id: i64,
 
-    name: Option<String>,
-    container_extension: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    added: i64,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    name: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    container_extension: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -190,7 +231,7 @@ pub struct MovieInfo {
 }
 
 pub async fn get_movie_info<'a>(
-    id: &'a str,
+    id: i64,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<MovieInfo> {
@@ -201,35 +242,45 @@ pub async fn get_movie_info<'a>(
 }
 
 pub async fn get_series<'a>(
-    category_id: &'a Option<String>,
+    category_id: Option<i64>,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<Vec<Value>> {
     params.action = Some("get_series");
-    params.id = category_id.deref_map(IdType::Category);
+    params.id = category_id.map(IdType::Category);
 
     get_json(&params, client).await
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Season {
-    poster_path: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    poster_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EpisodeInfo {
+    #[serde(default)]
     #[serde(alias = "movie_image")]
-    image: Option<String>,
+    #[serde(deserialize_with = "default_on_null")]
+    image: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Episode {
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub id: Option<i64>,
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub id: i64,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    title: String,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    pub container_extension: String,
 
     info: EpisodeInfo,
-    title: Option<String>,
-    pub container_extension: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -240,7 +291,7 @@ pub struct SerieInfo {
 }
 
 pub async fn get_serie_info<'a>(
-    id: &'a str,
+    id: i64,
     mut params: Params<'a>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<SerieInfo> {
@@ -253,11 +304,13 @@ pub async fn get_serie_info<'a>(
 #[derive(Serialize, Deserialize)]
 struct Category {
     #[serde(alias = "category_id")]
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    id: Option<i64>,
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    id: i64,
 
+    #[serde(default)]
     #[serde(alias = "category_name")]
-    name: Option<String>,
+    #[serde(deserialize_with = "default_on_null")]
+    name: String,
 }
 
 async fn get_categories<'a>(
@@ -276,58 +329,60 @@ async fn get_categories<'a>(
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Value {
-    #[serde(alias = "series_id", alias = "stream_id")]
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub id: Option<i64>,
+    #[serde(alias = "series_id")]
+    #[serde(alias = "stream_id")]
+    pub id: i64,
 
-    pub name: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    pub name: String,
 
-    #[serde(alias = "cover", alias = "stream_icon")]
-    pub icon: Option<String>,
+    #[serde(default)]
+    #[serde(alias = "cover")]
+    #[serde(alias = "stream_icon")]
+    #[serde(deserialize_with = "default_on_null")]
+    pub icon: String,
 
-    #[serde(skip_serializing)]
+    #[serde(default)]
     #[serde(alias = "last_modified")]
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub added: Option<i64>,
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub added: i64,
 
-    #[serde(skip_serializing)]
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub rating: Option<f64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub rating: f64,
 
-    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub episode_id: Option<i64>,
 
-    #[serde(skip_serializing)]
-    pub container_extension: Option<String>,
+    #[serde(skip_deserializing)]
+    pub container_extension: String,
 }
 
 impl Value {
-    pub fn from_movie_info(movie_info: MovieInfo, container_extension: bool) -> Value {
+    pub fn from_movie_info(movie_info: MovieInfo) -> Value {
         Value {
             id: movie_info.data.id,
             name: movie_info.data.name,
-            icon: movie_info.info.cover,
-            added: None,
+            icon: movie_info.info.icon,
+            added: movie_info.data.added,
             rating: movie_info.info.rating,
             episode_id: None,
-            container_extension: if container_extension {
-                movie_info.data.container_extension
-            } else {
-                None
-            },
+            container_extension: movie_info.data.container_extension,
         }
     }
     pub fn from_serie_info(
         serie_info: SerieInfo,
         value_id: i64,
         episode_id: Option<i64>,
-        container_extension: Option<String>,
+        container_extension: String,
     ) -> Value {
         Value {
-            id: Some(value_id),
+            id: value_id,
             name: serie_info.info.name,
-            icon: serie_info.info.cover,
-            added: None,
+            icon: serie_info.info.icon,
+            added: serie_info.info.last_modified,
             rating: serie_info.info.rating,
             episode_id,
             container_extension,

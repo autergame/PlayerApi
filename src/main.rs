@@ -38,9 +38,11 @@ async fn main() {
         panic!("Port is required")
     };
 
+    let cwd = env::current_dir().expect("Could not get current directory");
     let user_agent = format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-	println!("Starting server on 0.0.0.0:{} user agent {} cwd {}", port, user_agent, env::current_dir().unwrap().display());
+    println!("Starting server on 0.0.0.0:{port} user agent {user_agent} cwd {cwd:?}");
+    println!();
 
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert(
@@ -78,9 +80,13 @@ async fn main() {
 
     actix_web::rt::spawn(async move {
         loop {
-            let _ = home::make_homes(db_clone.clone(), client_clone.clone())
-                .await
-                .map_err(|err| println!("{:?}", err));
+            if let Err(error) = home::make_homes(db_clone.clone(), client_clone.clone()).await {
+                println!("{:?}", error);
+            }
+            if let Err(error) = watching::clean(db_clone.clone()).await {
+                println!("{:?}", error);
+            }
+
             actix_web::rt::time::sleep(Duration::from_secs(24 * 60 * 60)).await;
         }
     });
@@ -97,17 +103,12 @@ async fn main() {
                     .service(link::link)
                     .service(home::home)
                     .service(login::logoff)
+                    .service(search::search)
                     .service(
                         ActixWeb::scope("/avatar")
                             .service(avatar::get)
                             .service(avatar::store)
                             .service(avatar::remove),
-                    )
-                    .service(
-                        ActixWeb::scope("/search")
-                            .service(search::live)
-                            .service(search::movie)
-                            .service(search::serie),
                     )
                     .service(
                         ActixWeb::scope("/favorite")

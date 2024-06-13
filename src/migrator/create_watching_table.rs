@@ -28,13 +28,18 @@ impl MigrationTrait for Migration {
                             .to(Avatar::Table, Avatar::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
-                    .col(ColumnDef::new(Watching::Kind).string())
-                    .col(ColumnDef::new(Watching::ValueId).integer())
-                    .col(ColumnDef::new(Watching::Name).string())
+                    .col(ColumnDef::new(Watching::Kind).string().not_null())
+                    .col(ColumnDef::new(Watching::ValueId).integer().not_null())
+                    .col(ColumnDef::new(Watching::Name).string().not_null())
                     .col(ColumnDef::new(Watching::Icon).string())
+                    .col(ColumnDef::new(Watching::Date).integer().not_null())
                     .col(ColumnDef::new(Watching::Time).integer().not_null())
                     .col(ColumnDef::new(Watching::EpisodeId).integer())
-                    .col(ColumnDef::new(Watching::ContainerExtension).string())
+                    .col(
+                        ColumnDef::new(Watching::ContainerExtension)
+                            .string()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -56,6 +61,7 @@ enum Watching {
     ValueId,
     Name,
     Icon,
+    Date,
     Time,
     EpisodeId,
     ContainerExtension,

@@ -28,9 +28,9 @@ impl MigrationTrait for Migration {
                             .to(Avatar::Table, Avatar::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
-                    .col(ColumnDef::new(Favorite::Kind).string())
-                    .col(ColumnDef::new(Favorite::ValueId).integer())
-                    .col(ColumnDef::new(Favorite::Name).string())
+                    .col(ColumnDef::new(Favorite::Kind).string().not_null())
+                    .col(ColumnDef::new(Favorite::ValueId).integer().not_null())
+                    .col(ColumnDef::new(Favorite::Name).string().not_null())
                     .col(ColumnDef::new(Favorite::Icon).string())
                     .to_owned(),
             )

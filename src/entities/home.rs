@@ -14,13 +14,9 @@ pub struct Model {
     #[serde(skip_serializing_if = "Kind::is_normal")]
     pub kind: Kind,
 
-    #[serde(alias = "series_id", alias = "stream_id")]
-    pub value_id: Option<i64>,
-
-    pub name: Option<String>,
-
-    #[serde(alias = "cover", alias = "stream_icon")]
-    pub icon: Option<String>,
+    pub value_id: i64,
+    pub name: String,
+    pub icon: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Default, EnumIter, DeriveActiveEnum, Serialize)]

@@ -12,21 +12,16 @@ pub struct Model {
     pub avatar_id: i64,
 
     pub kind: Kind,
-
-    #[serde(alias = "series_id", alias = "stream_id")]
-    pub value_id: Option<i64>,
-
-    pub name: Option<String>,
-
-    #[serde(alias = "cover", alias = "stream_icon")]
-    pub icon: Option<String>,
-
+    pub value_id: i64,
+    pub name: String,
+    pub icon: String,
+    pub date: i64,
     pub time: i64,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub episode_id: Option<i64>,
 
-    pub container_extension: Option<String>,
+    pub container_extension: String,
 }
 
 #[derive(Clone, Debug, PartialEq, EnumIter, Default, DeriveActiveEnum, Deserialize, Serialize)]

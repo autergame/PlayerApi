@@ -31,6 +31,7 @@ pub enum ApiError {
 struct ApiErrorJson {
     //#[schema(example = "0")]
     error: u8,
+
     //#[schema(example = "AccountNotFound")]
     hint: String,
 }

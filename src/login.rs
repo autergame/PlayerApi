@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::{
     api_error::{ApiError, ApiResult},
     entities::prelude::*,
-    extra::{get_json, get_month_ago, Params},
+    extra::{get_days_ago, get_json, Params},
     home,
 };
 
@@ -75,7 +75,7 @@ pub async fn login(
     login.id = session_res.last_insert_id;
     user_info.id = session_res.last_insert_id;
 
-    let month_ago = get_month_ago()?;
+    let month_ago = get_days_ago(30);
     home::make(&login, month_ago, db.clone(), client).await?;
 
     LoginEntity::insert(Into::<LoginActiveModel>::into(login))
@@ -120,10 +120,8 @@ pub async fn get_login_info(
 
     let login_response = get_json::<LoginResponse>(&params, client).await?;
 
-    if let Some(auth) = login_response.user_info.auth {
-        if auth > 0 {
-            return Ok(login_response.user_info);
-        }
+    if login_response.user_info.auth > 0 {
+        return Ok(login_response.user_info);
     }
 
     Err(ApiError::AccountNotFound)

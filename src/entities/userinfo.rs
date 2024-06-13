@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::extra::opt_num_from_str_or_num;
+use crate::extra::{default_on_null, num_from_str_or_num};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "user_info")]
@@ -10,25 +10,33 @@ pub struct Model {
     #[serde(skip_serializing, skip_deserializing)]
     pub id: i64,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub auth: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub auth: i64,
 
-    pub status: Option<String>,
+    #[serde(default)]
+    #[serde(deserialize_with = "default_on_null")]
+    pub status: String,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub is_trial: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub is_trial: i64,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub exp_date: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub exp_date: i64,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub created_at: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub created_at: i64,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub active_cons: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub active_cons: i64,
 
-    #[serde(default, deserialize_with = "opt_num_from_str_or_num")]
-    pub max_connections: Option<i64>,
+    #[serde(default)]
+    #[serde(deserialize_with = "num_from_str_or_num")]
+    pub max_connections: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -2,7 +2,6 @@ use actix_web::{web as ActixWeb, HttpResponse};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use sea_orm::{ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::Serialize;
-use std::str::FromStr;
 
 use crate::{
     api_error::{ApiError, ApiResult},
@@ -66,7 +65,7 @@ pub async fn get(
 #[actix_web::get("/store/{avatar}/{kind}/{id}")]
 async fn store(
     credentials: BearerAuth,
-    path: ActixWeb::Path<(i64, Kind, String)>,
+    path: ActixWeb::Path<(i64, Kind, i64)>,
     db: ActixWeb::Data<DatabaseConnection>,
     client: ActixWeb::Data<reqwest::Client>,
 ) -> ApiResult<HttpResponse> {
@@ -86,21 +85,19 @@ async fn store(
 
     let value = match kind {
         Kind::Live => {
-            let id = i64::from_str(&id)?;
-            let lives = get_lives(&None, Params::new(&login), client).await?;
+            let lives = get_lives(None, Params::new(&login), client).await?;
             lives
                 .into_iter()
-                .find(|x| x.id == Some(id))
+                .find(|x| x.id == id)
                 .ok_or(ApiError::WrongId)?
         }
         Kind::Movie => {
-            let movie_info = get_movie_info(&id, Params::new(&login), client).await?;
-            Value::from_movie_info(movie_info, false)
+            let movie_info = get_movie_info(id, Params::new(&login), client).await?;
+            Value::from_movie_info(movie_info)
         }
         Kind::Serie => {
-            let int_id = i64::from_str(&id)?;
-            let serie_info = get_serie_info(&id, Params::new(&login), client).await?;
-            Value::from_serie_info(serie_info, int_id, None, None)
+            let serie_info = get_serie_info(id, Params::new(&login), client).await?;
+            Value::from_serie_info(serie_info, id, None, String::new())
         }
     };
 
@@ -132,7 +129,7 @@ async fn store(
 #[actix_web::get("/remove/{avatar}/{kind}/{id}")]
 async fn remove(
     credentials: BearerAuth,
-    path: ActixWeb::Path<(i64, Kind, String)>,
+    path: ActixWeb::Path<(i64, Kind, i64)>,
     db: ActixWeb::Data<DatabaseConnection>,
 ) -> ApiResult<HttpResponse> {
     let (avatar, kind, id) = path.into_inner();

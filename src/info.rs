@@ -23,7 +23,6 @@ async fn info(
     Ok(HttpResponse::Ok().json(user_info))
 }
 
-#[allow(clippy::await_holding_lock)]
 async fn get_update_user_info(
     session: Session,
     db: ActixWeb::Data<DatabaseConnection>,

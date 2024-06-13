@@ -2,12 +2,11 @@ use actix_web::{web as ActixWeb, HttpResponse};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use sea_orm::{ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::Deserialize;
-use std::str::FromStr;
 
 use crate::{
     api_error::{ApiError, ApiResult},
     entities::{prelude::*, watching::Kind},
-    extra::Params,
+    extra::{get_days_ago, Params},
     get::{get_movie_info, get_serie_info, Value},
     login,
 };
@@ -42,9 +41,9 @@ async fn get(
 struct Store {
     avatar: i64,
     kind: Kind,
-    time: i64,
-    id: String,
+    id: i64,
     episode_id: Option<i64>,
+    time: i64,
 }
 
 #[actix_web::routes]
@@ -72,17 +71,16 @@ async fn store(
 
     let value = match store.kind {
         Kind::Movie => {
-            let movie_info = get_movie_info(&store.id, Params::new(&login), client).await?;
-            Value::from_movie_info(movie_info, true)
+            let movie_info = get_movie_info(store.id, Params::new(&login), client).await?;
+            Value::from_movie_info(movie_info)
         }
         Kind::Serie => {
-            let id = i64::from_str(&store.id)?;
             let episode_id = store.episode_id.ok_or(ApiError::NotFound)?;
 
             for episodes in WatchingEntity::find()
                 .filter(WatchingColumn::AvatarId.eq(store.avatar))
                 .filter(WatchingColumn::Kind.eq(store.kind.clone()))
-                .filter(WatchingColumn::ValueId.eq(id))
+                .filter(WatchingColumn::ValueId.eq(store.id))
                 .filter(WatchingColumn::EpisodeId.ne(episode_id))
                 .all(db.get_ref())
                 .await?
@@ -92,18 +90,18 @@ async fn store(
                     .await?;
             }
 
-            let serie_info = get_serie_info(&store.id, Params::new(&login), client).await?;
+            let serie_info = get_serie_info(store.id, Params::new(&login), client).await?;
 
             let container_extension = serie_info
                 .episodes
                 .values()
                 .flatten()
-                .find(|x| x.id == Some(episode_id))
+                .find(|x| x.id == episode_id)
                 .ok_or(ApiError::WrongEpisodeId)?
                 .container_extension
                 .clone();
 
-            Value::from_serie_info(serie_info, id, Some(episode_id), container_extension)
+            Value::from_serie_info(serie_info, store.id, Some(episode_id), container_extension)
         }
     };
 
@@ -114,9 +112,12 @@ async fn store(
         .one(db.get_ref())
         .await?;
 
+    let date = chrono::Utc::now().timestamp();
+
     if let Some(watching) = exist {
         WatchingEntity::update(WatchingActiveModel {
             id: ActiveValue::Set(watching.id),
+            date: ActiveValue::Set(date),
             time: ActiveValue::Set(store.time),
             ..Default::default()
         })
@@ -130,6 +131,7 @@ async fn store(
             value_id: ActiveValue::Set(value.id),
             name: ActiveValue::Set(value.name),
             icon: ActiveValue::Set(value.icon),
+            date: ActiveValue::Set(date),
             time: ActiveValue::Set(store.time),
             episode_id: ActiveValue::Set(value.episode_id),
             container_extension: ActiveValue::Set(value.container_extension),
@@ -171,4 +173,21 @@ async fn remove(
     WatchingEntity::delete(watching).exec(db.get_ref()).await?;
 
     Ok(HttpResponse::Ok().body("true"))
+}
+
+pub async fn clean(db: ActixWeb::Data<DatabaseConnection>) -> ApiResult<()> {
+    let weak_ago = get_days_ago(7);
+
+    let watchings = WatchingEntity::find()
+        .filter(WatchingColumn::Date.lte(weak_ago))
+        .all(db.get_ref())
+        .await?;
+
+    for watching in watchings {
+        WatchingEntity::delete(Into::<WatchingActiveModel>::into(watching))
+            .exec(db.get_ref())
+            .await?;
+    }
+
+    Ok(())
 }
