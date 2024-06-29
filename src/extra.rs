@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{api_error, entities};
 
+#[derive(Serialize)]
+pub struct BoolResult {
+    pub result: bool,
+}
+
 #[derive(Serialize, Debug)]
 pub enum IdType {
     #[serde(rename(serialize = "stream_id"))]

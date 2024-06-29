@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::{
     api_error::{ApiError, ApiResult},
     entities::prelude::*,
-    extra::{get_days_ago, get_json, Params},
+    extra::{get_days_ago, get_json, BoolResult, Params},
     home,
 };
 
@@ -55,7 +55,7 @@ pub async fn login(
             .one(db.get_ref())
             .await?
         {
-            return Ok(HttpResponse::Ok().body(session.auth_key));
+            return Ok(HttpResponse::Ok().json(session));
         }
     }
 
@@ -86,7 +86,7 @@ pub async fn login(
         .exec(db.get_ref())
         .await?;
 
-    Ok(HttpResponse::Ok().body(auth_key))
+    Ok(HttpResponse::Ok().json(Session { id: 0, auth_key }))
 }
 
 // #[utoipa::path(
@@ -107,9 +107,11 @@ pub async fn logoff(
 
     let session: SessionActiveModel = get_session(auth_key, &db).await?.into();
 
-    SessionEntity::delete(session).exec(db.get_ref()).await?;
+    let result = SessionEntity::delete(session).exec(db.get_ref()).await?;
 
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(BoolResult {
+        result: result.rows_affected > 0,
+    }))
 }
 
 pub async fn get_login_info(

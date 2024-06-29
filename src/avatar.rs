@@ -5,6 +5,7 @@ use sea_orm::{ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, QueryFi
 use crate::{
     api_error::{ApiError, ApiResult},
     entities::prelude::*,
+    extra::BoolResult,
     login,
 };
 
@@ -50,11 +51,11 @@ async fn store(
         })
         .exec(db.get_ref())
         .await?;
-
-        Ok(HttpResponse::Ok().body("true"))
-    } else {
-        Ok(HttpResponse::Ok().body("false"))
     }
+
+    Ok(HttpResponse::Ok().json(BoolResult {
+        result: exist.is_none(),
+    }))
 }
 
 #[actix_web::get("/remove/{id}")]
@@ -76,7 +77,9 @@ async fn remove(
         .ok_or(ApiError::WrongId)?
         .into();
 
-    AvatarEntity::delete(avatar).exec(db.get_ref()).await?;
+    let result = AvatarEntity::delete(avatar).exec(db.get_ref()).await?;
 
-    Ok(HttpResponse::Ok().body("true"))
+    Ok(HttpResponse::Ok().json(BoolResult {
+        result: result.rows_affected > 0,
+    }))
 }

@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::{
     api_error::{ApiError, ApiResult},
     entities::{prelude::*, watching::Kind},
-    extra::{get_days_ago, Params},
+    extra::{get_days_ago, BoolResult, Params},
     get::{get_movie_info, get_serie_info, Value},
     login,
 };
@@ -140,7 +140,7 @@ async fn store(
         .await?;
     }
 
-    Ok(HttpResponse::Ok().body("true"))
+    Ok(HttpResponse::Ok().json(BoolResult { result: true }))
 }
 
 #[actix_web::get("/remove/{avatar}/{kind}/{id}")]
@@ -170,9 +170,11 @@ async fn remove(
         .ok_or(ApiError::WrongId)?
         .into();
 
-    WatchingEntity::delete(watching).exec(db.get_ref()).await?;
+    let result = WatchingEntity::delete(watching).exec(db.get_ref()).await?;
 
-    Ok(HttpResponse::Ok().body("true"))
+    Ok(HttpResponse::Ok().json(BoolResult {
+        result: result.rows_affected > 0,
+    }))
 }
 
 pub async fn clean(db: ActixWeb::Data<DatabaseConnection>) -> ApiResult<()> {
